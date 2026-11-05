@@ -5,3 +5,5 @@ build/
 # IDE caches
 .idea/
 devtools_options.yaml
+
+tests/

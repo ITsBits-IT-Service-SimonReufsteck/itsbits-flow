@@ -12,25 +12,25 @@
 # Configuration for the main API server.
 apiServer:
   port: 8180
-  publicHost: api.examplepod.com
-  publicPort: 443
-  publicScheme: https
+  publicHost: 192.168.1.109
+  publicPort: 8180
+  publicScheme: http
 
 # Configuration for the Insights server.
 insightsServer:
   port: 8181
-  publicHost: insights.examplepod.com
-  publicPort: 443
-  publicScheme: https
+  publicHost: 192.168.1.109
+  publicPort: 8181
+  publicScheme: http
 
 # Configuration for the web server.
 webServer:
   port: 8182
-  publicHost: app.examplepod.com
-  publicPort: 443
-  publicScheme: https
+  publicHost: 192.168.1.109
+  publicPort: 8182
+  publicScheme: http
 
-# Co-located compose stack (see above): private Docker network, no TLS.
+# This is the database setup for your server.
 database:
   host: postgres
   port: 5432
@@ -44,7 +44,7 @@ database:
 maxRequestSize: 524288 # The maximum size of requests allowed in bytes
 
 sessionLogs:
-  consoleEnabled: false
+  consoleEnabled: true
 # persistentEnabled: true
 # consoleLogFormat: json # Defaults to "json", options are "text" or "json"
 
