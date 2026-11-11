@@ -1,6 +1,8 @@
-# enduser_flutter
+# ITsBits-Flow (end-user app)
 
-A new Flutter project with Serverpod.
+The itsbits-flow end-user app of the global instance (folder and Dart
+workspace path stay `enduser_flutter`; Dart package name is
+`itsbits_flow`, Android/iOS application id `de.itsbits.flow`).
 
 ## Getting Started
 

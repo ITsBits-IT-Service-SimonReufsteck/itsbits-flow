@@ -1,4 +1,4 @@
-package com.example.enduser_flutter
+package de.itsbits.flow
 
 import io.flutter.embedding.android.FlutterActivity
 

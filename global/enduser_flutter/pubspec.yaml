@@ -1,5 +1,5 @@
-name: enduser_flutter
-description: A new Flutter project with Serverpod.
+name: itsbits_flow
+description: ITsBits-Flow end-user app (global instance client).
 
 # The following line prevents the package from being accidentally published to
 # pub.dev using `pub publish`. This is preferred for private packages.
