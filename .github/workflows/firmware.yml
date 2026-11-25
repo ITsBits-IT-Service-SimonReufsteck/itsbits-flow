@@ -9,6 +9,9 @@ on:
 jobs:
   build-esp32dev:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.VERSION }}
+      channel: ${{ steps.ver.outputs.CHANNEL }}
     steps:
       - uses: actions/checkout@v4
 
@@ -40,6 +43,9 @@ jobs:
 
   build-waveshare:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.ver.outputs.VERSION }}
+      channel: ${{ steps.ver.outputs.CHANNEL }}
     steps:
       - uses: actions/checkout@v4
 
@@ -81,13 +87,13 @@ jobs:
       - name: Download esp32dev artifact
         uses: actions/download-artifact@v4
         with:
-          name: firmware-${{ github.ref_name }}-esp32dev
+          name: firmware-${{ needs.build-esp32dev.outputs.version }}-${{ needs.build-esp32dev.outputs.channel }}-esp32dev
           path: artifacts/esp32dev
 
       - name: Download waveshare artifact
         uses: actions/download-artifact@v4
         with:
-          name: firmware-${{ github.ref_name }}-waveshare
+          name: firmware-${{ needs.build-waveshare.outputs.version }}-${{ needs.build-waveshare.outputs.channel }}-waveshare
           path: artifacts/waveshare
 
       - name: Create Release
