@@ -22,6 +22,10 @@ void setup() {
     Serial.println("Starting...");
     backend.begin();
     wifi.begin();
+    
+    updater.setAutoUpdateEnabled(wifi.getAutoUpdateEnabled());
+    updater.setAutoUpdateHour(wifi.getAutoUpdateHour());
+    updater.setTimezone(wifi.getTimezone());
 }
 
 void loop() {

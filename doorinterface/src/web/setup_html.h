@@ -25,6 +25,35 @@ const char SETUP_HTML[] PROGMEM = R"HTML(
       <div id="hostStatus"></div>
     </section>
     <section class="card">
+      <h2>Geräteinformationen</h2>
+      <p class="muted">Board-Typ wurde beim ersten Flash gesetzt.</p>
+      <p><strong>Board:</strong> <span id="boardType">…</span></p>
+      <p><strong>Firmware:</strong> <span id="fwChannel">…</span></p>
+    </section>
+    <section class="card">
+      <h2>Update-Konfiguration</h2>
+      <p class="muted">Wähle, welche Firmware-Versionen installiert werden sollen.</p>
+      <form id="boardConfigForm">
+        <label>Update Channel
+          <select id="fwChannelInput">
+            <option value="release" selected>Release builds (stable)</option>
+            <option value="development">Development builds (testing)</option>
+          </select>
+        </label>
+        <label>Auto-Update (05:00)
+          <input type="checkbox" id="autoUpdateInput">
+        </label>
+        <label>Timezone
+          <select id="timezoneInput">
+            <option value="Europe/Berlin" selected>Europe/Berlin (UTC+1)</option>
+            <option value="UTC">UTC (Greenwich)</option>
+          </select>
+        </label>
+        <button type="submit" id="boardConfigBtn">Speichern</button>
+      </form>
+      <div id="boardConfigStatus"></div>
+    </section>
+    <section class="card">
       <h2>NUKI Smart Lock</h2>
       <div id="nukiStatus"></div>
       <div id="nukiPinSection"></div>

@@ -1,4 +1,5 @@
 #include "WifiManager.h"
+#include "Updater.h"
 #include "web/portal_html.h"
 #include "web/portal_css.h"
 #include "web/portal_js.h"
@@ -60,8 +61,13 @@ void WifiManager::loadHostname() {
         _hostname = String(def);
         _prefs.putString("hostname", _hostname);
     }
+    _boardType = _prefs.getString("board_type", BOARD_TYPE);
+    _fwChannel = _prefs.getString("fw_channel", "release");
+    _autoUpdateEnabled = _prefs.getBool("auto_update_enabled", false);
+    _autoUpdateHour = _prefs.getInt("auto_update_hour", 5);
+    _timezone = _prefs.getString("timezone", "Europe/Berlin");
     _prefs.end();
-    Serial.printf("[WifiManager] Hostname: %s\n", _hostname.c_str());
+    Serial.printf("[WifiManager] Hostname: %s, Board: %s, Channel: %s\n", _hostname.c_str(), _boardType.c_str(), _fwChannel.c_str());
 }
 
 bool WifiManager::setHostname(const String& hostname) {
@@ -75,6 +81,37 @@ bool WifiManager::setHostname(const String& hostname) {
     _prefs.begin("system", false);
     _prefs.putString("hostname", hostname);
     _prefs.end();
+    return true;
+}
+
+bool WifiManager::setBoardConfig(const String& boardType, const String& channel, bool autoUpdateEnabled, int autoUpdateHour, const String& timezone) {
+    if (boardType.length() == 0) return false;
+    if (channel != "release" && channel != "development") return false;
+    if (autoUpdateHour < 0 || autoUpdateHour > 23) return false;
+    if (timezone.length() == 0) return false;
+    
+    _boardType = boardType;
+    _fwChannel = channel;
+    _autoUpdateEnabled = autoUpdateEnabled;
+    _autoUpdateHour = autoUpdateHour;
+    _timezone = timezone;
+    
+    _prefs.begin("system", false);
+    _prefs.putString("board_type", boardType);
+    _prefs.putString("fw_channel", channel);
+    _prefs.putBool("auto_update_enabled", autoUpdateEnabled);
+    _prefs.putInt("auto_update_hour", autoUpdateHour);
+    _prefs.putString("timezone", timezone);
+    _prefs.end();
+    
+    if (_updater) {
+        _updater->setAutoUpdateEnabled(autoUpdateEnabled);
+        _updater->setAutoUpdateHour(autoUpdateHour);
+        _updater->setTimezone(timezone);
+    }
+    
+    Serial.printf("[WifiManager] Board config saved: %s %s auto=%d hour=%d tz=%s\n",
+                  boardType.c_str(), channel.c_str(), autoUpdateEnabled, autoUpdateHour, timezone.c_str());
     return true;
 }
 

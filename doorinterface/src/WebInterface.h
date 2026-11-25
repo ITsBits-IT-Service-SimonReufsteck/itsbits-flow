@@ -52,5 +52,7 @@ private:
     void handleUpdateStart();
     void handleUpdateProgress();
     void handleReboot();
+    void handleBoardConfigGet();
+    void handleBoardConfigPost();
     void handleNotFound();
 };

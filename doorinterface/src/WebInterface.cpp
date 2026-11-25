@@ -20,6 +20,7 @@ void WebInterface::begin(WifiManager& wifi, NukiManager& nuki, BleServer& ble, B
     _ble = &ble;
     _backend = &backend;
     _updater = &updater;
+    wifi.setUpdater(&updater);
     String hostname = _wifi->getHostname();
     if (MDNS.begin(hostname.c_str())) MDNS.addService("http", "tcp", 80);
     _server.on("/",             HTTP_GET,  [this](){ handleRoot();        });
@@ -50,6 +51,8 @@ void WebInterface::begin(WifiManager& wifi, NukiManager& nuki, BleServer& ble, B
     _server.on("/api/update/start",   HTTP_POST, [this](){ handleUpdateStart(); });
     _server.on("/api/update/progress",HTTP_GET,  [this](){ handleUpdateProgress(); });
     _server.on("/api/reboot",         HTTP_POST, [this](){ handleReboot(); });
+    _server.on("/api/board/config",   HTTP_GET,  [this](){ handleBoardConfigGet(); });
+    _server.on("/api/board/config",   HTTP_POST, [this](){ handleBoardConfigPost(); });
     _server.onNotFound(                     [this](){ handleNotFound();   });
     _server.begin();
     Serial.printf("[HTTP] Hauptseite bereit (%s.local)\n", hostname.c_str());
@@ -105,7 +108,10 @@ void WebInterface::handleReboot() {
 }
 void WebInterface::handleUpdateCheck() {
     if (!_updater) { _server.send(500, "application/json", "{\"error\":\"no updater\"}"); return; }
-    _updater->checkForUpdate();
+    if (!_wifi) { _server.send(500, "application/json", "{\"error\":\"no WifiManager\"}"); return; }
+    String channel = _wifi->getFwChannel();
+    String board = _wifi->getBoardType();
+    _updater->checkForUpdate(board, channel);
     _server.sendHeader("Cache-Control", "no-store");
     _server.send(200, "application/json", "{\"started\":true}");
 }
@@ -157,7 +163,20 @@ void WebInterface::handleStatus() {
         json += ",\"rssi\":" + String(_nuki->getRssi());
     }
     json += "}";
-    json += ",\"firmware\":{\"version\":\"" FW_VERSION "\"}";
+    json += ",\"firmware\":{\"version\":\"" FW_VERSION "\"";
+    if (_wifi) {
+        json += ",\"channel\":\"" + _wifi->getFwChannel() + "\"";
+        json += ",\"board\":\"" + _wifi->getBoardType() + "\"";
+    }
+    json += "}";
+    json += ",\"update\":{";
+    if (_wifi) {
+        json += "\"autoUpdateEnabled\":" + String(_wifi->getAutoUpdateEnabled() ? "true" : "false") + ",";
+        json += "\"autoUpdateHour\":" + String(_wifi->getAutoUpdateHour()) + ",";
+        json += "\"timezone\":\"" + _wifi->getTimezone() + "\"";
+    }
+    json += "\"updateAvailable\":" + String(_updater ? (_updater->getStatusJson().indexOf("\"state\":\"UPDATE_AVAILABLE\"") >= 0) ? "true" : "false" : "false");
+    json += "}";
     String mac = _ble ? _ble->getAddress() : String("");
     String hostname = _wifi ? _wifi->getHostname() : String("");
     json += ",\"ble\":{\"available\":" + String(_ble ? "true" : "false");
@@ -307,4 +326,44 @@ void WebInterface::handleNukiPollPost() {
     _nuki->setPollInterval((uint16_t)interval);
     _server.sendHeader("Cache-Control", "no-store");
     _server.send(200, "application/json", "{\"ok\":true}");
+}
+
+void WebInterface::handleBoardConfigGet() {
+    if (!_wifi) {
+        _server.send(500, "application/json", "{\"ok\":false,\"error\":\"WifiManager nicht initialisiert\"}");
+        return;
+    }
+    String json = "{";
+    json += "\"board_type\":\"" + _wifi->getBoardType() + "\",";
+    json += "\"fw_channel\":\"" + _wifi->getFwChannel() + "\",";
+    json += "\"auto_update_enabled\":" + String(_wifi->getAutoUpdateEnabled() ? "true" : "false") + ",";
+    json += "\"auto_update_hour\":" + String(_wifi->getAutoUpdateHour()) + ",";
+    json += "\"timezone\":\"" + _wifi->getTimezone() + "\"";
+    json += "}";
+    _server.sendHeader("Cache-Control", "no-store");
+    _server.send(200, "application/json", json);
+}
+
+void WebInterface::handleBoardConfigPost() {
+    if (!_wifi) {
+        _server.send(500, "application/json", "{\"ok\":false,\"error\":\"WifiManager nicht initialisiert\"}");
+        return;
+    }
+    String boardType = _server.arg("board_type");
+    String channel = _server.arg("fw_channel");
+    String autoUpdateStr = _server.arg("auto_update_enabled");
+    String autoUpdateHourStr = _server.arg("auto_update_hour");
+    String timezone = _server.arg("timezone");
+    
+    bool autoUpdateEnabled = (autoUpdateStr == "true");
+    int autoUpdateHour = autoUpdateHourStr.toInt();
+    
+    if (!_wifi->setBoardConfig(boardType, channel, autoUpdateEnabled, autoUpdateHour, timezone)) {
+        _server.send(400, "application/json", "{\"ok\":false,\"error\":\"Ungültige Konfiguration\"}");
+        return;
+    }
+    
+    String json = "{\"ok\":true}";
+    _server.sendHeader("Cache-Control", "no-store");
+    _server.send(200, "application/json", json);
 }

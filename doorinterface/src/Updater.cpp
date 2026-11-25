@@ -14,10 +14,49 @@ void Updater::begin() {
 }
 
 void Updater::loop() {
+    if (_state == DONE && millis() > 1000) {
+        Serial.println("[UPDATE] Update installiert - Neustart...");
+        delay(1000);
+        ESP.restart();
+    }
+
+    if (!_autoUpdateEnabled) return;
+    if (_state != IDLE) return;
+
+    if (shouldCheckAutoUpdate()) {
+        checkForUpdate(_requestedBoard, _requestedChannel);
+    }
+}
+
+void Updater::setAutoUpdateEnabled(bool enabled) {
+    _autoUpdateEnabled = enabled;
+}
+
+void Updater::setAutoUpdateHour(int hour) {
+    _autoUpdateHour = hour;
+}
+
+void Updater::setTimezone(const String& tz) {
+    _timezone = tz;
+}
+
+bool Updater::shouldCheckAutoUpdate() {
+    if (WiFi.status() != WL_CONNECTED) return false;
+    
+    unsigned long now = millis();
+    if (now - _lastUpdateCheck < 24 * 60 * 60 * 1000) return false;
+    
+    return true;
 }
 
 void Updater::checkForUpdate() {
+    checkForUpdate("", "");
+}
+
+void Updater::checkForUpdate(const String& board, const String& channel) {
     if (_state == CHECKING || _state == DOWNLOADING) return;
+    _requestedBoard = board;
+    _requestedChannel = channel;
     setState(CHECKING);
     doCheck();
 }
@@ -60,6 +99,8 @@ void Updater::doCheck() {
 
     String url = "";
     int assetPos = 0;
+    String targetAsset = buildAssetName(_latest, _requestedChannel, _requestedBoard);
+    Serial.printf("[UPDATE] Suche Asset: %s\n", targetAsset.c_str());
     while (true) {
         int bUrl = body.indexOf("\"browser_download_url\"", assetPos);
         if (bUrl < 0) break;
@@ -67,14 +108,15 @@ void Updater::doCheck() {
         int q1 = body.indexOf('"', c + 1);
         int q2 = body.indexOf('"', q1 + 1);
         String assetUrl = body.substring(q1 + 1, q2);
-        if (assetUrl.endsWith("firmware.bin")) {
+        if (assetUrl.endsWith(".bin") && assetUrl.indexOf(targetAsset) >= 0) {
             url = assetUrl;
+            Serial.printf("[UPDATE] Found matching asset: %s\n", url.c_str());
             break;
         }
         assetPos = q2 + 1;
     }
     if (url.length() == 0) {
-        fail("Kein firmware.bin Asset im Release gefunden");
+        fail("Kein passendes Asset im Release gefunden (board=" + _requestedBoard + ", channel=" + _requestedChannel + ")");
         return;
     }
     _downloadUrl = url;
@@ -225,4 +267,11 @@ String Updater::stripFwPrefix(const String& tag) {
     if (tag.startsWith("fw-")) return tag.substring(3);
     if (tag.startsWith("v")) return tag.substring(1);
     return tag;
+}
+
+String Updater::buildAssetName(const String& version, const String& channel, const String& board) {
+    if (channel == "development") {
+        return "firmware-" + version + "-dev-" + board + ".bin";
+    }
+    return "firmware-" + version + "-" + board + ".bin";
 }

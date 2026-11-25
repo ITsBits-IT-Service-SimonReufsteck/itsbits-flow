@@ -41,6 +41,11 @@ async function refresh() {
         $('bleDetails').innerHTML = '<dt>Hostname</dt><dd>' + (b.hostname || '–') + '</dd><dt>MAC</dt><dd>' + (b.mac || '–') + '</dd><dt>QR-Inhalt</dt><dd><code>' + (b.qrContent || '') + '</code></dd>';
       }
     }
+    if (s.update && s.update.updateAvailable) {
+      $('updateBtn').style.display = 'inline-block';
+    } else {
+      $('updateBtn').style.display = 'none';
+    }
   } catch (e) {}
 }
 
@@ -51,6 +56,13 @@ function bindActuator() {
   if (o) o.onclick = async () => { o.disabled = true; await fetch('/api/nuki/open', { method:'POST' }); setTimeout(refresh, 500); };
 }
 
+async function checkUpdate() {
+  try {
+    await fetch('/api/update/check', { method:'POST' });
+  } catch(e){}
+  refresh();
+}
+
 refresh();
 setInterval(refresh, 3000);
 
@@ -58,4 +70,6 @@ $('menuBtn').onclick = (e) => { e.stopPropagation(); $('menuList').classList.tog
 document.addEventListener('click', () => $('menuList').classList.add('hidden'));
 const rb = $('menuReboot');
 if (rb) rb.onclick = (e) => { e.preventDefault(); if (confirm('Gerät wirklich neu starten?')) { fetch('/api/reboot', { method:'POST' }); document.body.innerHTML = '<p style="text-align:center;margin-top:3em">Neustart... bitte warten.</p>'; } };
+const ub = $('updateBtn');
+if (ub) ub.onclick = checkUpdate;
 )JS";

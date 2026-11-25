@@ -31,6 +31,19 @@ async function refreshQr() {
     if (b.siteId) $('backendSiteId').value = b.siteId;
     if (b.configured) $('backendStatus').textContent = 'Konfiguriert (Site-ID ' + b.siteId + ').';
   } catch(e){}
+  try {
+    const r = await fetch('/api/board/config');
+    const bc = await r.json();
+    if (bc.fw_channel) $('fwChannelInput').value = bc.fw_channel;
+    if (bc.auto_update_enabled) $('autoUpdateInput').checked = bc.auto_update_enabled;
+    if (bc.timezone) $('timezoneInput').value = bc.timezone;
+  } catch(e){}
+  try {
+    const r = await fetch('/api/status');
+    const s = await r.json();
+    if (s.firmware && s.firmware.board) $('boardType').textContent = s.firmware.board;
+    if (s.firmware && s.firmware.channel) $('fwChannel').textContent = s.firmware.channel;
+  } catch(e){}
   refreshQr();
 })();
 
@@ -70,6 +83,28 @@ $('hostForm').onsubmit = async (e) => {
       $('hostBtn').disabled = false;
     }
   } catch(err) { $('hostStatus').textContent = 'Fehler'; $('hostBtn').disabled = false; }
+};
+
+$('boardConfigForm').onsubmit = async (e) => {
+  e.preventDefault();
+  const channel = $('fwChannelInput').value;
+  const autoUpdate = $('autoUpdateInput').checked;
+  const hour = 5;
+  const timezone = $('timezoneInput').value;
+  $('boardConfigBtn').disabled = true;
+  $('boardConfigStatus').textContent = 'speichere ...';
+  try {
+    const body = 'board_type=esp32dev&fw_channel='+encodeURIComponent(channel)+'&auto_update_enabled='+(autoUpdate?'true':'false')+'&auto_update_hour='+hour+'&timezone='+encodeURIComponent(timezone);
+    const r = await fetch('/api/board/config', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:body });
+    const s = await r.json();
+    if (r.ok && s.ok) {
+      $('boardConfigStatus').textContent = 'Gespeichert. Update-Channel: ' + channel;
+      setTimeout(() => { $('boardConfigStatus').textContent = ''; $('boardConfigBtn').disabled = false; }, 3000);
+    } else {
+      $('boardConfigStatus').textContent = 'Fehler: ' + (s.error || r.status);
+      $('boardConfigBtn').disabled = false;
+    }
+  } catch(err) { $('boardConfigStatus').textContent = 'Fehler'; $('boardConfigBtn').disabled = false; }
 };
 
 async function refreshNuki() {

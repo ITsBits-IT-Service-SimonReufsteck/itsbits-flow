@@ -6,6 +6,8 @@
 #include <DNSServer.h>
 #include <WebServer.h>
 
+class Updater;
+
 enum PortalState { PORTAL_IDLE, PORTAL_CONNECTING, PORTAL_CONNECTED, PORTAL_FAILED };
 
 class WifiManager {
@@ -16,6 +18,13 @@ public:
     bool isApActive();
     String getHostname() { return _hostname; }
     bool setHostname(const String& hostname);
+    String getBoardType() { return _boardType; }
+    String getFwChannel() { return _fwChannel; }
+    bool getAutoUpdateEnabled() { return _autoUpdateEnabled; }
+    int getAutoUpdateHour() { return _autoUpdateHour; }
+    String getTimezone() { return _timezone; }
+    bool setBoardConfig(const String& boardType, const String& channel, bool autoUpdateEnabled, int autoUpdateHour, const String& timezone);
+    void setUpdater(Updater* updater) { _updater = updater; }
 
 private:
     Preferences _prefs;
@@ -23,6 +32,11 @@ private:
     String _ssid;
     String _pass;
     String _hostname;
+    String _boardType;
+    String _fwChannel;
+    bool _autoUpdateEnabled = false;
+    int _autoUpdateHour = 5;
+    String _timezone = "Europe/Berlin";
 
     DNSServer _dns;
     WebServer _server{80};
@@ -60,4 +74,6 @@ private:
     void handleConfig();
     void handleRedirect();
     void handleClose();
+
+    Updater* _updater = nullptr;
 };

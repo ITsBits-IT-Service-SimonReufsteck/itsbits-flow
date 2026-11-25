@@ -41,6 +41,7 @@ const char MAIN_HTML[] PROGMEM = R"HTML(
     <section class="card">
       <h2>Firmware</h2>
       <p id="fwVersion">…</p>
+      <button id="updateBtn" style="display:none" class="btn">Update verfuegbar</button>
     </section>
   </main>
   <script src="/main.js"></script>
