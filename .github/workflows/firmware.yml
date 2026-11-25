@@ -3,7 +3,7 @@ name: Build and Release Firmware
 on:
   push:
     tags:
-      - 'fw-v*' # Startet bei Tags wie fw-v0.1.0-dev oder fw-v0.1.0
+      - 'fw-v*'
 
 permissions:
   contents: write
@@ -24,12 +24,26 @@ jobs:
         id: get_envs
         run: |
           ENVS=$(python3 -c "
-          import configparser, json
-          config = configparser.ConfigParser()
-          config.read('platformio.ini')
-          envs = [s[4:] for s in config.sections() if s.startswith('env:')]
+          import configparser, json, os, re
+
+          ini_path = 'doorinterface/platformio.ini'
+          if not os.path.exists(ini_path):
+              raise FileNotFoundError(f'{ini_path} nicht gefunden in {os.getcwd()}')
+
+          config = configparser.ConfigParser(interpolation=None)
+          try:
+              config.read(ini_path, encoding='utf-8')
+              envs = [s[4:] for s in config.sections() if s.startswith('env:')]
+          except configparser.Error:
+              with open(ini_path, encoding='utf-8') as f:
+                  envs = re.findall(r'^\[env:([^\]]+)\]', f.read(), re.MULTILINE)
+
+          if not envs:
+              raise ValueError('Keine [env:...] Sektionen gefunden')
+
           print(json.dumps(envs))
           ")
+          echo "Gefundene Environments: $ENVS"
           echo "envs=$ENVS" >> $GITHUB_OUTPUT
 
       - name: Parse Version & Pre-Release Status
@@ -39,7 +53,6 @@ jobs:
           VERSION=${TAG#fw-v}
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           
-          # Prüft, ob nach dem Entfernen von 'fw-v' noch ein Bindestrich (z. B. -dev) übrig ist
           if [[ "$VERSION" == *-* ]]; then
             echo "prerelease=true" >> $GITHUB_OUTPUT
           else
@@ -71,18 +84,20 @@ jobs:
           path: |
             ~/.cache/pip
             ~/.platformio/.cache
-          key: ${{ runner.os }}-pio-${{ hashFiles('**/platformio.ini') }}
+          key: ${{ runner.os }}-pio-${{ hashFiles('doorinterface/platformio.ini') }}
 
       - name: Install PlatformIO
         run: pip install -U platformio
 
       - name: Build Firmware
+        working-directory: doorinterface
         run: pio run -e ${{ matrix.env }}
 
       - name: Rename Firmware Binary
+        working-directory: doorinterface
         run: |
           VERSION="${{ needs.setup.outputs.version }}"
-          cp .pio/build/${{ matrix.env }}/firmware.bin firmware-${VERSION}-${{ matrix.env }}.bin
+          cp .pio/build/${{ matrix.env }}/firmware.bin ../firmware-${VERSION}-${{ matrix.env }}.bin
 
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
