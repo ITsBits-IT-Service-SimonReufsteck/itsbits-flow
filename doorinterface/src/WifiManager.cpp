@@ -3,11 +3,13 @@
 #include "web/portal_css.h"
 #include "web/portal_js.h"
 #include <uri/UriGlob.h>
+#include <WiFi.h>
 
 void WifiManager::begin() {
     Serial.println("[WifiManager] begin()");
-    loadHostname();
     loadCredentials();
+    WiFi.onEvent(std::bind(&WifiManager::onWiFiEvent, this, std::placeholders::_1, std::placeholders::_2));
+    loadHostname();
     if (_ssid.length() == 0) {
         Serial.println("[WifiManager] keine Credentials gespeichert");
     } else if (tryConnect()) {
@@ -22,15 +24,18 @@ void WifiManager::begin() {
 
 void WifiManager::loop() {
     if (_apActive && _shutdownRequested) { _shutdownRequested = false; shutdownAp(); return; }
-    if (!_apActive) return;
-    _dns.processNextRequest();
-    _server.handleClient();
-    if (_portalState == PORTAL_CONNECTING) pollConnect();
-    if (_portalState == PORTAL_CONNECTED && _connectedAt > 0 &&
-        millis() - _connectedAt >= _apOffDelay) {
-        Serial.println("[WifiManager] AP nach 30s abgeschaltet, nur noch STA");
-        shutdownAp();
+    if (_apActive) {
+        _dns.processNextRequest();
+        _server.handleClient();
+        if (_portalState == PORTAL_CONNECTING) pollConnect();
+        if (_portalState == PORTAL_CONNECTED && _connectedAt > 0 &&
+            millis() - _connectedAt >= _apOffDelay) {
+            Serial.println("[WifiManager] AP nach 30s abgeschaltet, nur noch STA");
+            shutdownAp();
+        }
+        return;
     }
+    staWatchdog();
 }
 
 bool WifiManager::isConnected() { return WiFi.status() == WL_CONNECTED; }
@@ -230,4 +235,37 @@ void WifiManager::shutdownAp() {
     _apActive = false;
     _portalState = PORTAL_IDLE;
     Serial.println("[WifiManager] AP geschlossen, nur noch STA");
+}
+
+void WifiManager::staWatchdog() {
+    if (WiFi.status() == WL_CONNECTED) {
+        _staDownSince = 0;
+        _reconnectAttempts = 0;
+        return;
+    }
+    unsigned long now = millis();
+    if (_staDownSince == 0) {
+        _staDownSince = now;
+        Serial.println("[WifiManager] STA-Verbindung verloren");
+    }
+    if (now - _lastReconnectAttempt >= RECONNECT_INTERVAL) {
+        _lastReconnectAttempt = now;
+        ++_reconnectAttempts;
+        Serial.printf("[WifiManager] Reconnect-Versuch #%u\n", _reconnectAttempts);
+        WiFi.disconnect(false);
+        WiFi.mode(WIFI_STA);
+        WiFi.setHostname(_hostname.c_str());
+        WiFi.begin(_ssid.c_str(), _pass.c_str());
+    }
+    if (now - _staDownSince >= RESTART_AFTER) {
+        Serial.println("[WifiManager] Reconnect fehlgeschlagen, Neustart");
+        delay(100);
+        ESP.restart();
+    }
+}
+
+void WifiManager::onWiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info) {
+    if (event == ARDUINO_EVENT_WIFI_STA_DISCONNECTED) {
+        Serial.printf("[WifiManager] Disconnect, reason: %d\n", info.wifi_sta_disconnected.reason);
+    }
 }

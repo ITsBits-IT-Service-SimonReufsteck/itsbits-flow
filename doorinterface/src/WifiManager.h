@@ -35,6 +35,12 @@ private:
     const unsigned long _apOffDelay = 30000;
     bool _shutdownRequested = false;
 
+    unsigned long _staDownSince = 0;
+    unsigned long _lastReconnectAttempt = 0;
+    uint32_t _reconnectAttempts = 0;
+    static constexpr unsigned long RECONNECT_INTERVAL = 10000;
+    static constexpr unsigned long RESTART_AFTER = 300000;
+
     void loadCredentials();
     void loadHostname();
     bool tryConnect();
@@ -42,6 +48,8 @@ private:
     void startPortal();
     void pollConnect();
     void shutdownAp();
+    void staWatchdog();
+    void onWiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info);
 
     void handleRoot();
     void handleCss();
