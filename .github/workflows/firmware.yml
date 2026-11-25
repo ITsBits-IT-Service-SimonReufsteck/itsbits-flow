@@ -105,3 +105,4 @@ jobs:
           files: |
             artifacts/esp32dev/firmware.bin
             artifacts/waveshare/firmware.bin
+          prune: true
