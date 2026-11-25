@@ -270,8 +270,5 @@ String Updater::stripFwPrefix(const String& tag) {
 }
 
 String Updater::buildAssetName(const String& version, const String& channel, const String& board) {
-    if (channel == "development") {
-        return "firmware-" + version + "-dev-" + board + ".bin";
-    }
     return "firmware-" + version + "-" + board + ".bin";
 }
