@@ -94,7 +94,7 @@ $('boardConfigForm').onsubmit = async (e) => {
   $('boardConfigBtn').disabled = true;
   $('boardConfigStatus').textContent = 'speichere ...';
   try {
-    const body = 'board_type=esp32dev&fw_channel='+encodeURIComponent(channel)+'&auto_update_enabled='+(autoUpdate?'true':'false')+'&auto_update_hour='+hour+'&timezone='+encodeURIComponent(timezone);
+    const body = 'board_type=waveshare&fw_channel='+encodeURIComponent(channel)+'&auto_update_enabled='+(autoUpdate?'true':'false')+'&auto_update_hour='+hour+'&timezone='+encodeURIComponent(timezone);
     const r = await fetch('/api/board/config', { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:body });
     const s = await r.json();
     if (r.ok && s.ok) {

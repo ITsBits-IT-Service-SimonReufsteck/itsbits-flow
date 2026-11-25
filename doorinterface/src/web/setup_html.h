@@ -13,22 +13,24 @@ const char SETUP_HTML[] PROGMEM = R"HTML(
 <body>
   <header><h1>Einrichtung</h1></header>
   <main>
-    <section class="card" id="wifi">
-      <h2>Gerätename</h2>
-      <p class="muted">Name für mDNS (&lt;name&gt;.local). Nach Änderung startet das Gerät neu.</p>
-      <form id="hostForm">
-        <label>Hostname
-          <input type="text" id="hostInput" pattern="[a-z0-9\-]{1,63}" title="a-z, 0-9, Bindestrich; max. 63 Zeichen">
+    <section class="card" id="backend">
+      <h2>Backend-Anbindung</h2>
+      <p class="muted">Adresse der lokalen Instanz (Webserver, z. B. http://192.168.1.109:8182) und die Site-ID. Beides wird normalerweise automatisch vom lokalen Server gesetzt ("Konfiguration senden" in der Standort-Verwaltung) — hier nur zur manuellen Korrektur.</p>
+      <form id="backendForm">
+        <label>Server-URL
+          <input type="text" id="backendUrl" placeholder="http://192.168.1.109:8182">
         </label>
-        <button type="submit" id="hostBtn">Speichern &amp; Neustart</button>
+        <label>Site-ID
+          <input type="number" id="backendSiteId" min="1" inputmode="numeric">
+        </label>
+        <button type="submit" id="backendBtn">Speichern</button>
       </form>
-      <div id="hostStatus"></div>
+      <div id="backendStatus"></div>
     </section>
     <section class="card">
-      <h2>Geräteinformationen</h2>
-      <p class="muted">Board-Typ wurde beim ersten Flash gesetzt.</p>
-      <p><strong>Board:</strong> <span id="boardType">…</span></p>
-      <p><strong>Firmware:</strong> <span id="fwChannel">…</span></p>
+      <h2>NUKI Smart Lock</h2>
+      <div id="nukiStatus"></div>
+      <div id="nukiPinSection"></div>
     </section>
     <section class="card">
       <h2>Update-Konfiguration</h2>
@@ -54,28 +56,10 @@ const char SETUP_HTML[] PROGMEM = R"HTML(
       <div id="boardConfigStatus"></div>
     </section>
     <section class="card">
-      <h2>NUKI Smart Lock</h2>
-      <div id="nukiStatus"></div>
-      <div id="nukiPinSection"></div>
-    </section>
-    <section class="card" id="backend">
-      <h2>Backend-Anbindung</h2>
-      <p class="muted">Adresse der lokalen Instanz (Webserver, z. B. http://192.168.1.109:8182) und die Site-ID. Beides wird normalerweise automatisch vom lokalen Server gesetzt ("Konfiguration senden" in der Standort-Verwaltung) — hier nur zur manuellen Korrektur.</p>
-      <form id="backendForm">
-        <label>Server-URL
-          <input type="text" id="backendUrl" placeholder="http://192.168.1.109:8182">
-        </label>
-        <label>Site-ID
-          <input type="number" id="backendSiteId" min="1" inputmode="numeric">
-        </label>
-        <button type="submit" id="backendBtn">Speichern</button>
-      </form>
-      <div id="backendStatus"></div>
-    </section>
-    <section class="card" id="about">
-      <h2>Zugriffsschutz</h2>
-      <p class="muted">Login/Auth folgt in einem späteren Schritt.</p>
-      <a class="btn" href="/">&larr; Zurück zum Dashboard</a>
+      <h2>Geräteinformationen</h2>
+      <p class="muted">Board-Typ wurde beim ersten Flash gesetzt.</p>
+      <p><strong>Board:</strong> <span id="boardType">…</span></p>
+      <p><strong>Firmware:</strong> <span id="fwChannel">…</span></p>
     </section>
     <section class="card">
       <h2>Firmware-Update</h2>
@@ -96,6 +80,17 @@ const char SETUP_HTML[] PROGMEM = R"HTML(
         <li>Alternativ: <a href="https://qifi.org/" target="_blank" rel="noopener">qifi.org</a> (nur WiFi, also ungeeignet), <a href="https://duckduckgo.com/?q=qr+code+generator" target="_blank" rel="noopener">Suche</a>.</li>
       </ul>
       <p class="muted">Tipp: Kundendisplay-Seite <a href="/display">/display</a> zeigt den QR direkt im Browser, ggf. auf einem Tablet/Display im Türbereich.</p>
+    </section>
+    <section class="card" id="wifi">
+      <h2>Gerätename</h2>
+      <p class="muted">Name für mDNS (&lt;name&gt;.local). Nach Änderung startet das Gerät neu.</p>
+      <form id="hostForm">
+        <label>Hostname
+          <input type="text" id="hostInput" pattern="[a-z0-9\-]{1,63}" title="a-z, 0-9, Bindestrich; max. 63 Zeichen">
+        </label>
+        <button type="submit" id="hostBtn">Speichern &amp; Neustart</button>
+      </form>
+      <div id="hostStatus"></div>
     </section>
   </main>
   <script src="/setup.js"></script>

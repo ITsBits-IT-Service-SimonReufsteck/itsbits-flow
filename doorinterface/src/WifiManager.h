@@ -18,7 +18,7 @@ public:
     bool isApActive();
     String getHostname() { return _hostname; }
     bool setHostname(const String& hostname);
-    String getBoardType() { return _boardType; }
+    String getBoardType() { return String(BOARD_TYPE); }
     String getFwChannel() { return _fwChannel; }
     bool getAutoUpdateEnabled() { return _autoUpdateEnabled; }
     int getAutoUpdateHour() { return _autoUpdateHour; }
@@ -32,7 +32,6 @@ private:
     String _ssid;
     String _pass;
     String _hostname;
-    String _boardType;
     String _fwChannel;
     bool _autoUpdateEnabled = false;
     int _autoUpdateHour = 5;

@@ -173,7 +173,7 @@ void WebInterface::handleStatus() {
     if (_wifi) {
         json += "\"autoUpdateEnabled\":" + String(_wifi->getAutoUpdateEnabled() ? "true" : "false") + ",";
         json += "\"autoUpdateHour\":" + String(_wifi->getAutoUpdateHour()) + ",";
-        json += "\"timezone\":\"" + _wifi->getTimezone() + "\"";
+        json += "\"timezone\":\"" + _wifi->getTimezone() + "\",";
     }
     json += "\"updateAvailable\":" + String(_updater ? (_updater->getStatusJson().indexOf("\"state\":\"UPDATE_AVAILABLE\"") >= 0) ? "true" : "false" : "false");
     json += "}";
