@@ -9,8 +9,6 @@ on:
 jobs:
   build-esp32dev:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -40,19 +38,8 @@ jobs:
           name: firmware-${{ steps.ver.outputs.VERSION }}-${{ steps.ver.outputs.CHANNEL }}-esp32dev
           path: doorinterface/.pio/build/esp32dev/firmware.bin
 
-      - name: Create Release (esp32dev)
-        if: startsWith(github.ref, 'refs/tags/fw-v')
-        uses: softprops/action-gh-release@v2
-        with:
-          name: Firmware ${{ steps.ver.outputs.VERSION }}
-          tag_name: ${{ github.ref_name }}
-          generate_release_notes: true
-          files: doorinterface/.pio/build/esp32dev/firmware.bin
-
   build-waveshare:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -82,11 +69,33 @@ jobs:
           name: firmware-${{ steps.ver.outputs.VERSION }}-${{ steps.ver.outputs.CHANNEL }}-waveshare
           path: doorinterface/.pio/build/waveshare-esp32-s3-touch-lcd-2/firmware.bin
 
-      - name: Create Release (waveshare)
-        if: startsWith(github.ref, 'refs/tags/fw-v')
+  create-release:
+    needs: [build-esp32dev, build-waveshare]
+    if: startsWith(github.ref, 'refs/tags/fw-v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download esp32dev artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware-${{ github.ref_name }}-esp32dev
+          path: artifacts/esp32dev
+
+      - name: Download waveshare artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: firmware-${{ github.ref_name }}-waveshare
+          path: artifacts/waveshare
+
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Firmware ${{ steps.ver.outputs.VERSION }}
+          name: Firmware ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
           generate_release_notes: true
-          files: doorinterface/.pio/build/waveshare-esp32-s3-touch-lcd-2/firmware.bin
+          files: |
+            artifacts/esp32dev/firmware.bin
+            artifacts/waveshare/firmware.bin
