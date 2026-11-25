@@ -5,7 +5,7 @@
 #include <HTTPClient.h>
 #include <Update.h>
 
-#define GITHUB_API_URL "https://api.github.com/repos/itsfair/top_attempt/releases/latest"
+#define GITHUB_API_URL "https://api.github.com/repos/ITsBits-IT-Service-SimonReufsteck/itsbits-flow/releases/latest"
 #define GITHUB_HOST "api.github.com"
 #define GITHUB_ACCEPT "application/vnd.github+json"
 
