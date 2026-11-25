@@ -1,108 +1,110 @@
-name: Build & Release firmware
+name: Build and Release Firmware
 
 on:
   push:
     tags:
-      - 'fw-v*'
-  workflow_dispatch:
+      - 'fw-v*' # Startet bei Tags wie fw-v0.1.0-dev oder fw-v0.1.0
+
+permissions:
+  contents: write
 
 jobs:
-  build-esp32dev:
+  setup:
+    name: Parse platformio.ini & Version
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.ver.outputs.VERSION }}
-      channel: ${{ steps.ver.outputs.CHANNEL }}
+      envs: ${{ steps.get_envs.outputs.envs }}
+      version: ${{ steps.get_version.outputs.version }}
+      prerelease: ${{ steps.get_version.outputs.prerelease }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Extract Environments
+        id: get_envs
+        run: |
+          ENVS=$(python3 -c "
+          import configparser, json
+          config = configparser.ConfigParser()
+          config.read('platformio.ini')
+          envs = [s[4:] for s in config.sections() if s.startswith('env:')]
+          print(json.dumps(envs))
+          ")
+          echo "envs=$ENVS" >> $GITHUB_OUTPUT
+
+      - name: Parse Version & Pre-Release Status
+        id: get_version
+        run: |
+          TAG=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG#fw-v}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          
+          # Prüft, ob nach dem Entfernen von 'fw-v' noch ein Bindestrich (z. B. -dev) übrig ist
+          if [[ "$VERSION" == *-* ]]; then
+            echo "prerelease=true" >> $GITHUB_OUTPUT
+          else
+            echo "prerelease=false" >> $GITHUB_OUTPUT
+          fi
+
+  build:
+    name: Build Firmware (${{ matrix.env }})
+    needs: setup
+    runs-on: ubuntu-latest
+    
+    strategy:
+      fail-fast: false
+      matrix:
+        env: ${{ fromJson(needs.setup.outputs.envs) }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.platformio/.cache
+          key: ${{ runner.os }}-pio-${{ hashFiles('**/platformio.ini') }}
 
       - name: Install PlatformIO
-        run: pip install --upgrade platformio
+        run: pip install -U platformio
 
-      - name: Determine version
-        id: ver
+      - name: Build Firmware
+        run: pio run -e ${{ matrix.env }}
+
+      - name: Rename Firmware Binary
         run: |
-          if [[ "${{ github.ref_type }}" == "tag" ]]; then
-            VERSION="${GITHUB_REF_NAME#fw-v}"
-            CHANNEL="release"
-          else
-            VERSION="0.0.0-dev"
-            CHANNEL="development"
-          fi
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "CHANNEL=$CHANNEL" >> $GITHUB_OUTPUT
+          VERSION="${{ needs.setup.outputs.version }}"
+          cp .pio/build/${{ matrix.env }}/firmware.bin firmware-${VERSION}-${{ matrix.env }}.bin
 
-      - name: Build esp32dev
-        working-directory: doorinterface
-        run: pio run -e esp32dev
-
-      - name: Upload esp32dev artifact
+      - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: firmware-${{ steps.ver.outputs.VERSION }}-${{ steps.ver.outputs.CHANNEL }}-esp32dev
-          path: doorinterface/.pio/build/esp32dev/firmware.bin
+          name: firmware-${{ matrix.env }}
+          path: firmware-*-${{ matrix.env }}.bin
 
-  build-waveshare:
+  release:
+    name: Create GitHub Release
+    needs: [setup, build]
     runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.ver.outputs.VERSION }}
-      channel: ${{ steps.ver.outputs.CHANNEL }}
+    
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Install PlatformIO
-        run: pip install --upgrade platformio
-
-      - name: Determine version
-        id: ver
-        run: |
-          if [[ "${{ github.ref_type }}" == "tag" ]]; then
-            VERSION="${GITHUB_REF_NAME#fw-v}"
-            CHANNEL="release"
-          else
-            VERSION="0.0.0-dev"
-            CHANNEL="development"
-          fi
-          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
-          echo "CHANNEL=$CHANNEL" >> $GITHUB_OUTPUT
-
-      - name: Build waveshare
-        working-directory: doorinterface
-        run: pio run -e waveshare-esp32-s3-touch-lcd-2
-
-      - name: Upload waveshare artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: firmware-${{ steps.ver.outputs.VERSION }}-${{ steps.ver.outputs.CHANNEL }}-waveshare
-          path: doorinterface/.pio/build/waveshare-esp32-s3-touch-lcd-2/firmware.bin
-
-  create-release:
-    needs: [build-esp32dev, build-waveshare]
-    if: startsWith(github.ref, 'refs/tags/fw-v')
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Download esp32dev artifact
+      - name: Download All Artifacts
         uses: actions/download-artifact@v4
         with:
-          name: firmware-${{ needs.build-esp32dev.outputs.version }}-${{ needs.build-esp32dev.outputs.channel }}-esp32dev
-          path: artifacts/esp32dev
+          path: artifacts
+          merge-multiple: true
 
-      - name: Download waveshare artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: firmware-${{ needs.build-waveshare.outputs.version }}-${{ needs.build-waveshare.outputs.channel }}-waveshare
-          path: artifacts/waveshare
-
-      - name: Create Release
+      - name: Publish Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Firmware ${{ github.ref_name }}
-          tag_name: ${{ github.ref_name }}
+          files: artifacts/*.bin
           generate_release_notes: true
-          files: |
-            artifacts/esp32dev/firmware.bin
-            artifacts/waveshare/firmware.bin
-          prune: true
+          prerelease: ${{ needs.setup.outputs.prerelease }}
